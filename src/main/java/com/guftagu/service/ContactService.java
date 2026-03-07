@@ -34,6 +34,7 @@ public class ContactService {
                 .profilePicture(user.getProfilePicture())
                 .onlineStatus(user.isOnlineStatus())
                 .lastSeen(user.getLastSeen())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 }

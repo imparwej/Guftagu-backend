@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,46 +19,72 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
-    private final ConcurrentHashMap<String, String> otpStore = new ConcurrentHashMap<>();
+    private final Map<String, OtpData> otpStorage = new ConcurrentHashMap<>();
+
+    private static class OtpData {
+        private String otp;
+        private LocalDateTime expiry;
+
+        public String getOtp() { return otp; }
+        public void setOtp(String otp) { this.otp = otp; }
+        public LocalDateTime getExpiry() { return expiry; }
+        public void setExpiry(LocalDateTime expiry) { this.expiry = expiry; }
+    }
 
     private String normalizePhoneNumber(String phoneNumber) {
         if (phoneNumber == null) return "";
-        String normalized = phoneNumber.trim();
-        if (normalized.startsWith("+91")) {
-            return normalized;
-        } else if (normalized.startsWith("91") && normalized.length() == 12) {
-            return "+" + normalized;
-        } else if (normalized.length() == 10) {
-            return "+91" + normalized;
+
+        String normalized = phoneNumber
+                .replaceAll("\\s+", "")
+                .trim();
+
+        if (!normalized.startsWith("+")) {
+            if (normalized.length() == 10) {
+                normalized = "+91" + normalized;
+            } else if (normalized.startsWith("91") && normalized.length() == 12) {
+                normalized = "+" + normalized;
+            }
         }
         return normalized;
     }
 
     public void sendOtp(String phoneNumber) {
         String normalizedNumber = normalizePhoneNumber(phoneNumber);
-        String otp = String.valueOf(100000 + new Random().nextInt(900000));
+        String otp = String.format("%06d", new Random().nextInt(1000000));
         
-        otpStore.put(normalizedNumber, otp);
+        OtpData otpData = new OtpData();
+        otpData.setOtp(otp);
+        otpData.setExpiry(LocalDateTime.now().plusMinutes(5));
+
+        otpStorage.put(normalizedNumber, otpData);
         
+        System.out.println("OTP Stored = " + otpData.getOtp());
         System.out.println("OTP for " + normalizedNumber + " = " + otp);
     }
 
     public AuthResponse verifyOtp(String phoneNumber, String otp) {
         String normalizedNumber = normalizePhoneNumber(phoneNumber);
+        OtpData otpData = otpStorage.get(normalizedNumber);
         
-        if (!otpStore.containsKey(normalizedNumber)) {
+        String enteredOtp = otp == null ? "" : otp.trim();
+        String storedOtp = otpData != null ? otpData.getOtp() : null;
+
+        System.out.println("OTP Stored = " + storedOtp);
+        System.out.println("OTP Entered = " + enteredOtp);
+
+        if (storedOtp == null) {
             return AuthResponse.builder()
                     .status("OTP_EXPIRED")
                     .build();
         }
 
-        if (!otpStore.get(normalizedNumber).equals(otp)) {
+        if (!storedOtp.equals(enteredOtp)) {
             return AuthResponse.builder()
                     .status("INVALID_OTP")
                     .build();
         }
 
-        otpStore.remove(normalizedNumber);
+        otpStorage.remove(normalizedNumber);
 
         return userRepository.findByPhoneNumber(normalizedNumber)
                 .map(user -> {
@@ -88,9 +115,8 @@ public class AuthService {
                 .phoneNumber(normalizedNumber)
                 .name(request.getName())
                 .bio(request.getBio())
-                .profilePicture(request.getProfileImage())
-                .onlineStatus(true)
-                .lastSeen(LocalDateTime.now())
+                .profilePicture(request.getProfilePicture())
+                .onlineStatus(false)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -104,7 +130,7 @@ public class AuthService {
         String token = jwtUtil.generateToken(userDetails);
 
         return AuthResponse.builder()
-                .status("LOGIN_SUCCESS")
+                .status("PROFILE_CREATED")
                 .token(token)
                 .user(savedUser)
                 .build();

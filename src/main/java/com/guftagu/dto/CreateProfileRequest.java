@@ -13,5 +13,5 @@ public class CreateProfileRequest {
     private String phoneNumber;
     private String name;
     private String bio;
-    private String profileImage;
+    private String profilePicture;
 }

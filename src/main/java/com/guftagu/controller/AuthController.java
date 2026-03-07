@@ -19,7 +19,7 @@ public class AuthController {
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody OtpRequest request) {
         authService.sendOtp(request.getPhoneNumber());
-        return ResponseEntity.ok().body(new AuthResponse("OTP_SENT", null, null));
+        return ResponseEntity.ok().body(AuthResponse.builder().status("OTP_SENT").build());
     }
 
     @PostMapping("/verify-otp")

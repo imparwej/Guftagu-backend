@@ -39,7 +39,7 @@ public class SecurityConfig {
 
                 // Authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/error").permitAll()
+                        .requestMatchers("/auth/**", "/ws/**", "/error").permitAll()
                         .anyRequest().authenticated()
                 )
 
