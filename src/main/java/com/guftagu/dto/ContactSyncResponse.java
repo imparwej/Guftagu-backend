@@ -11,6 +11,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ContactSyncRequest {
-    private List<ContactDTO> contacts;
+public class ContactSyncResponse {
+    private List<UserDTO> guftaguUsers;
+    private List<ContactDTO> inviteContacts;
 }

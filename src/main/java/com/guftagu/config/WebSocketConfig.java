@@ -30,14 +30,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/user", "/topic", "/queue");
+        config.enableSimpleBroker("/topic", "/queue");
         config.setApplicationDestinationPrefixes("/app");
-        config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/chat")
+        registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
@@ -58,8 +57,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                             if (phoneNumber != null) {
                                 UserDetails userDetails = customUserDetailsService.loadUserByUsername(phoneNumber);
                                 if (jwtUtil.isTokenValid(token, userDetails)) {
+                                    // Set Principal name to User ID for convertAndSendToUser consistency
+                                    String userId = ((com.guftagu.security.UserPrincipal) userDetails).getUser().getId();
                                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                            userDetails, null, userDetails.getAuthorities());
+                                            userId, null, userDetails.getAuthorities());
                                     accessor.setUser(authentication);
                                 }
                             }

@@ -9,6 +9,8 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Builder
@@ -34,4 +36,12 @@ public class User {
     private LocalDateTime lastSeen;
 
     private LocalDateTime createdAt;
+
+    // Blocked user IDs
+    @Builder.Default
+    private List<String> blockedUsers = new ArrayList<>();
+
+    // Muted conversation IDs
+    @Builder.Default
+    private List<String> mutedConversations = new ArrayList<>();
 }

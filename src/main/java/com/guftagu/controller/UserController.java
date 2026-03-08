@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -29,5 +30,30 @@ public class UserController {
     @GetMapping("/search")
     public ResponseEntity<List<UserDTO>> searchUsers(@RequestParam String query) {
         return ResponseEntity.ok(userService.searchUsers(query));
+    }
+
+    @PostMapping("/block")
+    public ResponseEntity<?> blockUser(@RequestBody Map<String, String> request) {
+        String blockerId = request.get("blockerId");
+        String blockedId = request.get("blockedId");
+        userService.blockUser(blockerId, blockedId);
+        return ResponseEntity.ok(Map.of("blocked", true));
+    }
+
+    @PostMapping("/unblock")
+    public ResponseEntity<?> unblockUser(@RequestBody Map<String, String> request) {
+        String blockerId = request.get("blockerId");
+        String blockedId = request.get("blockedId");
+        userService.unblockUser(blockerId, blockedId);
+        return ResponseEntity.ok(Map.of("blocked", false));
+    }
+
+    @PostMapping("/mute")
+    public ResponseEntity<?> toggleMute(@RequestBody Map<String, String> request) {
+        String userId = request.get("userId");
+        String conversationId = request.get("conversationId");
+        String muteDuration = request.get("muteDuration"); // Currently logged/passed but logic remains toggle
+        boolean isMuted = userService.toggleMuteConversation(userId, conversationId, muteDuration);
+        return ResponseEntity.ok(Map.of("muted", isMuted));
     }
 }
