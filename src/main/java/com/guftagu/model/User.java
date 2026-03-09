@@ -44,4 +44,7 @@ public class User {
     // Muted conversation IDs
     @Builder.Default
     private List<String> mutedConversations = new ArrayList<>();
+
+    // Firebase device token for push notifications
+    private String deviceToken;
 }

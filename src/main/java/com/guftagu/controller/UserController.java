@@ -56,4 +56,15 @@ public class UserController {
         boolean isMuted = userService.toggleMuteConversation(userId, conversationId, muteDuration);
         return ResponseEntity.ok(Map.of("muted", isMuted));
     }
+
+    /**
+     * Store or update the device FCM token for push notifications.
+     */
+    @PostMapping("/device-token")
+    public ResponseEntity<?> updateDeviceToken(@RequestBody Map<String, String> request) {
+        String userId = request.get("userId");
+        String token = request.get("token");
+        userService.updateDeviceToken(userId, token);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
 }

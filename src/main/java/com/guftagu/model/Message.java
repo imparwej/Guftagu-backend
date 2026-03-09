@@ -69,4 +69,14 @@ public class Message {
     // Forward message flag
     @Builder.Default
     private boolean forwarded = false;
+
+    // Reactions — userId -> emoji (only one reaction per user)
+    @Builder.Default
+    private Map<String, String> reactions = new HashMap<>();
+
+    // Message editing
+    @Builder.Default
+    private boolean edited = false;
+
+    private Long editedAt;
 }

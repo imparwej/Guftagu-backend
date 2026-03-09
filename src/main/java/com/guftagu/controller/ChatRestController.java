@@ -68,4 +68,16 @@ public class ChatRestController {
             @RequestParam(defaultValue = "all") String category) {
         return ResponseEntity.ok(messageService.getMediaMessages(conversationId, category));
     }
+
+    /**
+     * Toggle pin status for a conversation.
+     */
+    @PostMapping("/pin")
+    public ResponseEntity<?> togglePin(@RequestBody Map<String, String> request) {
+        String conversationId = request.get("conversationId");
+        String userId = request.get("userId");
+        boolean isPinned = messageService.togglePin(conversationId, userId);
+        return ResponseEntity.ok(Map.of("pinned", isPinned));
+    }
 }
+

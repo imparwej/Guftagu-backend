@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -134,6 +136,7 @@ public class MessageService {
                             .lastMessage(conversation.getLastMessage())
                             .lastMessageTime(conversation.getLastMessageTime())
                             .unreadCount(unreadCount)
+                            .isPinned(conversation.getPinnedBy() != null && conversation.getPinnedBy().contains(userId))
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -272,5 +275,69 @@ public class MessageService {
         return userRepository.findById(blockerId)
                 .map(user -> user.getBlockedUsers() != null && user.getBlockedUsers().contains(blockedId))
                 .orElse(false);
+    }
+
+    /**
+     * React to a message — only one reaction per user.
+     */
+    public Message reactToMessage(String messageId, String userId, String reaction) {
+        Optional<Message> msgOpt = messageRepository.findById(messageId);
+        if (msgOpt.isPresent()) {
+            Message message = msgOpt.get();
+            if (message.getReactions() == null) {
+                message.setReactions(new HashMap<>());
+            }
+            // If same reaction already set, remove it (toggle); otherwise set/update
+            String existing = message.getReactions().get(userId);
+            if (reaction.equals(existing)) {
+                message.getReactions().remove(userId);
+            } else {
+                message.getReactions().put(userId, reaction);
+            }
+            return messageRepository.save(message);
+        }
+        return null;
+    }
+
+    /**
+     * Edit a message — only within 15 minutes of sending.
+     */
+    public Message editMessage(String messageId, String newContent) {
+        Optional<Message> msgOpt = messageRepository.findById(messageId);
+        if (msgOpt.isPresent()) {
+            Message message = msgOpt.get();
+            long fifteenMinutes = 15 * 60 * 1000;
+            if (System.currentTimeMillis() - message.getTimestamp() < fifteenMinutes) {
+                message.setContent(newContent);
+                message.setEdited(true);
+                message.setEditedAt(System.currentTimeMillis());
+                return messageRepository.save(message);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Toggle pin status for a conversation.
+     */
+    public boolean togglePin(String conversationId, String userId) {
+        Optional<Conversation> convOpt = conversationRepository.findById(conversationId);
+        if (convOpt.isPresent()) {
+            Conversation conv = convOpt.get();
+            if (conv.getPinnedBy() == null) {
+                conv.setPinnedBy(new ArrayList<>());
+            }
+            boolean isPinned;
+            if (conv.getPinnedBy().contains(userId)) {
+                conv.getPinnedBy().remove(userId);
+                isPinned = false;
+            } else {
+                conv.getPinnedBy().add(userId);
+                isPinned = true;
+            }
+            conversationRepository.save(conv);
+            return isPinned;
+        }
+        return false;
     }
 }

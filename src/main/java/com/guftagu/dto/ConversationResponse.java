@@ -18,4 +18,5 @@ public class ConversationResponse {
     private String lastMessage;
     private LocalDateTime lastMessageTime;
     private int unreadCount;
+    private boolean isPinned;
 }

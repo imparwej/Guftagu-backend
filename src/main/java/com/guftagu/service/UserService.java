@@ -139,4 +139,23 @@ public class UserService {
                 .createdAt(user.getCreatedAt())
                 .build();
     }
+
+    /**
+     * Update device token for push notifications.
+     */
+    public void updateDeviceToken(String userId, String token) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setDeviceToken(token);
+            userRepository.save(user);
+        });
+    }
+
+    /**
+     * Get device token for a user.
+     */
+    public String getDeviceToken(String userId) {
+        return userRepository.findById(userId)
+                .map(User::getDeviceToken)
+                .orElse(null);
+    }
 }

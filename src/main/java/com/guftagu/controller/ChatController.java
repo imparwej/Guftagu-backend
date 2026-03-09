@@ -3,6 +3,7 @@ package com.guftagu.controller;
 import com.guftagu.model.Message;
 import com.guftagu.model.MessageType;
 import com.guftagu.service.MessageService;
+import com.guftagu.service.PushNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -19,6 +20,7 @@ public class ChatController {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final MessageService messageService;
+    private final PushNotificationService pushNotificationService;
 
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload Message message) {
@@ -65,7 +67,15 @@ public class ChatController {
         messagingTemplate.convertAndSendToUser(savedMessage.getReceiverId(), "/queue/messages", savedMessage);
         // Send confirmation back to sender
         messagingTemplate.convertAndSendToUser(savedMessage.getSenderId(), "/queue/messages", savedMessage);
+
+        // Send push notification to receiver
+        try {
+            pushNotificationService.sendMessageNotification(savedMessage);
+        } catch (Exception e) {
+            log.warn("Failed to send push notification: {}", e.getMessage());
+        }
     }
+
 
     @MessageMapping("/chat.typing")
     public void typingStatus(@Payload Map<String, Object> payload) {

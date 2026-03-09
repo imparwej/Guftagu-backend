@@ -4,9 +4,11 @@ import com.guftagu.model.Message;
 import com.guftagu.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/messages")
@@ -15,6 +17,7 @@ import java.util.List;
 public class MessageRestController {
 
     private final MessageService messageService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping("/{conversationId}")
     public ResponseEntity<List<Message>> getMessageHistory(
@@ -48,4 +51,40 @@ public class MessageRestController {
     public ResponseEntity<List<Message>> getStarredMessages(@PathVariable String userId) {
         return ResponseEntity.ok(messageService.getStarredMessages(userId));
     }
+
+    /**
+     * React to a message. One reaction per user.
+     */
+    @PostMapping("/react")
+    public ResponseEntity<?> reactToMessage(@RequestBody Map<String, String> request) {
+        String messageId = request.get("messageId");
+        String userId = request.get("userId");
+        String reaction = request.get("reaction");
+        Message updated = messageService.reactToMessage(messageId, userId, reaction);
+        if (updated != null) {
+            // Broadcast to both users
+            messagingTemplate.convertAndSendToUser(updated.getSenderId(), "/queue/messages", updated);
+            messagingTemplate.convertAndSendToUser(updated.getReceiverId(), "/queue/messages", updated);
+            return ResponseEntity.ok(updated);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    /**
+     * Edit a message (within 15 minutes).
+     */
+    @PutMapping("/edit")
+    public ResponseEntity<?> editMessage(@RequestBody Map<String, String> request) {
+        String messageId = request.get("messageId");
+        String newContent = request.get("newContent");
+        Message updated = messageService.editMessage(messageId, newContent);
+        if (updated != null) {
+            // Broadcast edited message to both users
+            messagingTemplate.convertAndSendToUser(updated.getSenderId(), "/queue/messages", updated);
+            messagingTemplate.convertAndSendToUser(updated.getReceiverId(), "/queue/messages", updated);
+            return ResponseEntity.ok(updated);
+        }
+        return ResponseEntity.badRequest().body(Map.of("error", "Cannot edit message. Time limit exceeded or message not found."));
+    }
 }
+
