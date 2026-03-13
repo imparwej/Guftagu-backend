@@ -59,6 +59,48 @@ public class ChatRestController {
     }
 
     /**
+     * Clear all messages in a chat (deletes from DB).
+     */
+    @DeleteMapping(value = { "/{conversationId}/clear", "/chat/{conversationId}/clear" })
+    public ResponseEntity<?> clearChatAll(@PathVariable String conversationId) {
+        try {
+            messageService.clearChat(conversationId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("Failed to fully clear chat: conversationId={}", conversationId, e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Unknown error"));
+        }
+    }
+
+    /**
+     * Mute notifications for a specific chat.
+     */
+    @PostMapping(value = { "/{conversationId}/mute", "/chat/{conversationId}/mute" })
+    public ResponseEntity<?> muteChat(@PathVariable String conversationId, @RequestBody Map<String, String> request) {
+        String userId = request.get("userId");
+        if (userId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "userId is required"));
+        }
+        messageService.muteChat(conversationId, userId);
+        return ResponseEntity.ok(Map.of("muted", true));
+    }
+
+    /**
+     * Unmute notifications for a specific chat.
+     */
+    @PostMapping(value = { "/{conversationId}/unmute", "/chat/{conversationId}/unmute" })
+    public ResponseEntity<?> unmuteChat(@PathVariable String conversationId, @RequestBody Map<String, String> request) {
+        String userId = request.get("userId");
+        if (userId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "userId is required"));
+        }
+        messageService.unmuteChat(conversationId, userId);
+        return ResponseEntity.ok(Map.of("muted", false));
+    }
+
+
+    /**
      * Get media/docs/links for a conversation.
      * Query param 'category' = media | docs | links | all
      */

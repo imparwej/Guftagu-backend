@@ -16,31 +16,21 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "conversations")
-public class Conversation {
+@Document(collection = "chats")
+public class Chat {
 
     @Id
     private String id;
 
     @Indexed
-    private String user1Id;
+    private List<String> participants = new ArrayList<>();
 
-    @Indexed
-    private String user2Id;
-
-    private String lastMessage;
-
-    private LocalDateTime lastMessageTime;
-
-    private int unreadCountUser1;
-
-    private int unreadCountUser2;
-
-    // Pinned chats — list of user IDs who have pinned this conversation
     @Builder.Default
-    private List<String> pinnedBy = new ArrayList<>();
+    private List<String> pinnedByUsers = new ArrayList<>();
 
-    // Users who have muted this conversation
     @Builder.Default
     private List<String> mutedByUsers = new ArrayList<>();
+
+    @Builder.Default
+    private List<String> deletedByUsers = new ArrayList<>();
 }

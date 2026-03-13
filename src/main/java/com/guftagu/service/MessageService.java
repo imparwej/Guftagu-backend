@@ -247,6 +247,49 @@ public class MessageService {
     }
 
     /**
+     * Clear all messages in a chat (deletes from DB for both users).
+     */
+    public void clearChat(String conversationId) {
+        messageRepository.deleteByConversationId(conversationId);
+        
+        // Reset last message and unread counts
+        conversationRepository.findById(conversationId).ifPresent(conversation -> {
+            conversation.setLastMessage(null);
+            conversation.setUnreadCountUser1(0);
+            conversation.setUnreadCountUser2(0);
+            conversationRepository.save(conversation);
+        });
+    }
+
+    /**
+     * Mute a conversation for a specific user.
+     */
+    public void muteChat(String conversationId, String userId) {
+        conversationRepository.findById(conversationId).ifPresent(conversation -> {
+            if (conversation.getMutedByUsers() == null) {
+                conversation.setMutedByUsers(new ArrayList<>());
+            }
+            if (!conversation.getMutedByUsers().contains(userId)) {
+                conversation.getMutedByUsers().add(userId);
+                conversationRepository.save(conversation);
+            }
+        });
+    }
+
+    /**
+     * Unmute a conversation for a specific user.
+     */
+    public void unmuteChat(String conversationId, String userId) {
+        conversationRepository.findById(conversationId).ifPresent(conversation -> {
+            if (conversation.getMutedByUsers() != null) {
+                conversation.getMutedByUsers().remove(userId);
+                conversationRepository.save(conversation);
+            }
+        });
+    }
+
+
+    /**
      * Get media messages for the Media/Links/Docs screen.
      */
     public List<Message> getMediaMessages(String conversationId, String category) {
@@ -267,6 +310,22 @@ public class MessageService {
         }
         return messageRepository.findByConversationIdAndTypeInOrderByTimestampDesc(conversationId, types);
     }
+
+    /**
+     * Explicit APIs requested by the user for fetching media types specifically.
+     */
+    public List<Message> getMedia(String chatId) {
+        return messageRepository.findByConversationIdAndTypeIn(chatId, List.of(MessageType.IMAGE, MessageType.VIDEO));
+    }
+
+    public List<Message> getLinks(String chatId) {
+        return messageRepository.findByConversationIdAndType(chatId, MessageType.LINK);
+    }
+
+    public List<Message> getDocs(String chatId) {
+        return messageRepository.findByConversationIdAndType(chatId, MessageType.DOCUMENT);
+    }
+
 
     /**
      * Check if a user is blocked by another user.
