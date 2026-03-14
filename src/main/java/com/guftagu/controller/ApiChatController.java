@@ -12,6 +12,7 @@ import com.guftagu.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +31,7 @@ public class ApiChatController {
     private final MessageRepository messageRepository;
     private final UserService userService;
     private final BlockService blockService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // STEP 2 - Chat List
     @GetMapping("/chats")
@@ -78,6 +80,13 @@ public class ApiChatController {
     public ResponseEntity<?> markAsRead(@PathVariable String chatId, Authentication authentication) {
         String userId = ((UserPrincipal) authentication.getPrincipal()).getUser().getId();
         chatService.markMessagesAsRead(chatId, userId);
+        
+        messagingTemplate.convertAndSend("/topic/read-receipts/" + chatId, Map.of(
+            "chatId", chatId,
+            "readBy", userId,
+            "readAt", java.time.LocalDateTime.now()
+        ));
+        
         return ResponseEntity.ok(Map.of("read", true));
     }
 

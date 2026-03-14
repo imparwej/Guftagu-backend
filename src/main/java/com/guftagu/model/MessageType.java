@@ -6,6 +6,7 @@ public enum MessageType {
     AUDIO,
     DOCUMENT,
     LOCATION,
+    LIVE_LOCATION,
     CONTACT,
     GIF,
     LINK,

@@ -1,0 +1,24 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< com.guftagu:guftagu-backend >---------------------
+[INFO] Building guftagu-backend 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ guftagu-backend ---
+[INFO] Deleting D:\guftagu-backend\guftagu-backend\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ guftagu-backend ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ guftagu-backend ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 57 source files with javac [debug parameters release 17] to target\classes
+[WARNING] /D:/guftagu-backend/guftagu-backend/src/main/java/com/guftagu/model/Chat.java:[26,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  10.197 s
+[INFO] Finished at: 2026-03-14T15:11:01+05:30
+[INFO] ------------------------------------------------------------------------

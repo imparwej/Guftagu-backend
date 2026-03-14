@@ -22,4 +22,6 @@ public class ChatListDTO {
     private boolean isMuted;
     private boolean isPinned;
     private boolean isTyping;
+    private boolean isOnline;
+    private LocalDateTime lastSeen;
 }

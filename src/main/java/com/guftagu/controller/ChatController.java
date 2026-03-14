@@ -4,6 +4,8 @@ import com.guftagu.model.Message;
 import com.guftagu.model.MessageType;
 import com.guftagu.service.MessageService;
 import com.guftagu.service.PushNotificationService;
+import com.guftagu.service.TypingService;
+import com.guftagu.service.LocationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -21,6 +23,8 @@ public class ChatController {
     private final SimpMessagingTemplate messagingTemplate;
     private final MessageService messageService;
     private final PushNotificationService pushNotificationService;
+    private final TypingService typingService;
+    private final LocationService locationService;
 
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload Message message) {
@@ -83,8 +87,32 @@ public class ChatController {
             return;
         }
         String receiverId = (String) payload.get("receiverId");
+        String senderId = (String) payload.get("senderId");
+        String chatId = (String) payload.get("chatId");
+
+        if (chatId != null && senderId != null) {
+            typingService.setTypingStatus(chatId, senderId);
+        }
+
         if (receiverId != null && !receiverId.isEmpty()) {
             messagingTemplate.convertAndSendToUser(receiverId, "/queue/typing", payload);
+        }
+    }
+
+    @MessageMapping("/chat.liveLocation")
+    public void liveLocation(@Payload Map<String, Object> payload) {
+        if (payload == null) {
+            return;
+        }
+        
+        String conversationId = (String) payload.get("conversationId");
+        String userId = (String) payload.get("userId");
+        if (userId == null) userId = (String) payload.get("senderId");
+        
+        if (conversationId != null && userId != null) {
+            locationService.updateLiveLocation(conversationId, userId, payload);
+            // Broadcast to the new topic requested
+            messagingTemplate.convertAndSend("/topic/location/" + conversationId, payload);
         }
     }
 }

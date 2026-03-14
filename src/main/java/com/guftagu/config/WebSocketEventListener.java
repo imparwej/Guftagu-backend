@@ -4,6 +4,7 @@ import com.guftagu.model.User;
 import com.guftagu.repository.UserRepository;
 import com.guftagu.security.UserPrincipal;
 import com.guftagu.service.MessageService;
+import com.guftagu.service.PresenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -26,6 +27,7 @@ public class WebSocketEventListener {
     private final MessageService messageService;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PresenceService presenceService;
 
     // Track active sessions: SessionId -> UserId
     private final Map<String, String> activeSessions = new ConcurrentHashMap<>();
@@ -44,19 +46,16 @@ public class WebSocketEventListener {
                 if (userId != null) {
                     activeSessions.put(sessionId, userId);
                     
-                    userRepository.findById(userId).ifPresent(user -> {
-                        user.setOnlineStatus(true);
-                        userRepository.save(user);
+                    presenceService.setUserOnline(userId);
 
-                        // Broadcast presence
-                        Map<String, Object> presenceUpdate = Map.of(
-                                "userId", userId,
-                                "isOnline", true,
-                                "lastSeen", user.getLastSeen() != null ? user.getLastSeen() : LocalDateTime.now()
-                        );
-                        messagingTemplate.convertAndSend("/topic/presence", presenceUpdate);
-                        log.info("User {} connected via WebSocket {}", userId, sessionId);
-                    });
+                    // Broadcast presence
+                    Map<String, Object> presenceUpdate = Map.of(
+                            "userId", userId,
+                            "isOnline", true,
+                            "lastSeen", LocalDateTime.now()
+                    );
+                    messagingTemplate.convertAndSend("/topic/presence", presenceUpdate);
+                    log.info("User {} connected via WebSocket {}", userId, sessionId);
 
                     messageService.markMessagesAsDelivered(userId);
                 }
@@ -71,20 +70,16 @@ public class WebSocketEventListener {
         String userId = activeSessions.remove(sessionId);
 
         if (userId != null) {
-            userRepository.findById(userId).ifPresent(user -> {
-                user.setOnlineStatus(false);
-                user.setLastSeen(LocalDateTime.now());
-                userRepository.save(user);
+            presenceService.setUserOffline(userId);
 
-                // Broadcast presence
-                Map<String, Object> presenceUpdate = Map.of(
-                        "userId", userId,
-                        "isOnline", false,
-                        "lastSeen", user.getLastSeen()
-                );
-                messagingTemplate.convertAndSend("/topic/presence", presenceUpdate);
-                log.info("User {} disconnected from WebSocket {}", userId, sessionId);
-            });
+            // Broadcast presence
+            Map<String, Object> presenceUpdate = Map.of(
+                    "userId", userId,
+                    "isOnline", false,
+                    "lastSeen", LocalDateTime.now()
+            );
+            messagingTemplate.convertAndSend("/topic/presence", presenceUpdate);
+            log.info("User {} disconnected from WebSocket {}", userId, sessionId);
         }
     }
 }

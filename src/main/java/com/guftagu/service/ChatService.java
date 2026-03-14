@@ -7,6 +7,8 @@ import com.guftagu.model.User;
 import com.guftagu.repository.ChatRepository;
 import com.guftagu.repository.MessageRepository;
 import com.guftagu.repository.UserRepository;
+import com.guftagu.service.PresenceService;
+import com.guftagu.service.TypingService;
 import lombok.RequiredArgsConstructor;
 import lombok.Data;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,8 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final MongoTemplate mongoTemplate;
+    private final PresenceService presenceService;
+    private final TypingService typingService;
 
     @Data
     private static class LastMessageResult {
@@ -38,26 +42,12 @@ public class ChatService {
         private Message lastMessage;
     }
 
+
+
     @Data
     private static class UnreadCountResult {
         private String id;
         private int unreadCount;
-    }
-
-    // In-memory map for typing indicator: chatId -> userId
-    private final ConcurrentHashMap<String, String> typingUsers = new ConcurrentHashMap<>();
-
-    public void setTypingStatus(String chatId, String userId) {
-        if (userId == null) {
-            typingUsers.remove(chatId);
-        } else {
-            typingUsers.put(chatId, userId);
-        }
-    }
-
-    public boolean isOtherUserTyping(String chatId, String currentUserId) {
-        String typingUserId = typingUsers.get(chatId);
-        return typingUserId != null && !typingUserId.equals(currentUserId);
     }
 
     public List<ChatListDTO> getChats(String userId) {
@@ -120,7 +110,9 @@ public class ChatService {
 
                     boolean isMuted = chat.getMutedByUsers() != null && chat.getMutedByUsers().contains(userId);
                     boolean isPinned = chat.getPinnedByUsers() != null && chat.getPinnedByUsers().contains(userId);
-                    boolean isTyping = isOtherUserTyping(chat.getId(), userId);
+                    boolean isTyping = typingService.isOtherUserTyping(chat.getId(), userId);
+                    boolean isOnline = presenceService.isUserOnline(otherUserId);
+                    java.time.LocalDateTime lastSeen = otherUser != null ? otherUser.getLastSeen() : null;
 
                     return ChatListDTO.builder()
                             .chatId(chat.getId())
@@ -133,6 +125,8 @@ public class ChatService {
                             .isMuted(isMuted)
                             .isPinned(isPinned)
                             .isTyping(isTyping)
+                            .isOnline(isOnline)
+                            .lastSeen(lastSeen)
                             .build();
                 })
                 .sorted((c1, c2) -> {
