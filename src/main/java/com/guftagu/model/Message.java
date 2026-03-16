@@ -29,60 +29,35 @@ public class Message {
 
     @Id
     private String id;
-
-    @Indexed
-    private String conversationId;
-
-    @Indexed
     private String senderId;
-
-    @Indexed
     private String receiverId;
-
-    private MessageType type;
-
+    private String conversationId;
     private String content;
-
+    private MessageType type;
     private String mediaUrl;
-
-    @Indexed
     private long timestamp;
-
     private boolean delivered;
-
     private boolean seen;
+    private String fileName;
+    private Long fileSize;
+    private Double voiceDuration;
 
-    // Link preview metadata (title, description, image, siteName, url)
+    // Additional fields for extended features
     @Builder.Default
     private Map<String, String> metadata = new HashMap<>();
-
-    // Disappearing messages — epoch millis when message expires (null = never)
     @Indexed
     private Long expiresAt;
-
-    // Clear chat per user — list of user IDs who have deleted this message locally
     @Builder.Default
     private List<String> deletedFor = new ArrayList<>();
-
-    // Delete for everyone flag
     @Builder.Default
     private boolean deletedForEveryone = false;
-
-    // Star message flag
     @Builder.Default
     private boolean starred = false;
-
-    // Forward message flag
     @Builder.Default
     private boolean forwarded = false;
-
-    // Reactions — userId -> emoji (only one reaction per user)
     @Builder.Default
     private Map<String, String> reactions = new HashMap<>();
-
-    // Message editing
     @Builder.Default
     private boolean edited = false;
-
     private Long editedAt;
 }

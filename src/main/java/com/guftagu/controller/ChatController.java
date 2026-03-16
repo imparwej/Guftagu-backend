@@ -6,11 +6,13 @@ import com.guftagu.service.MessageService;
 import com.guftagu.service.PushNotificationService;
 import com.guftagu.service.TypingService;
 import com.guftagu.service.LocationService;
+import com.guftagu.dto.LocationUpdate;
+import com.guftagu.service.KafkaProducer;
+import com.guftagu.websocket.WebSocketMessagePublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.util.Map;
@@ -20,11 +22,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ChatController {
 
-    private final SimpMessagingTemplate messagingTemplate;
     private final MessageService messageService;
     private final PushNotificationService pushNotificationService;
     private final TypingService typingService;
     private final LocationService locationService;
+    private final KafkaProducer kafkaProducer;
+    private final WebSocketMessagePublisher webSocketPublisher;
 
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload Message message) {
@@ -42,39 +45,30 @@ public class ChatController {
 
         // Validate message type — default to TEXT if unknown
         if (message.getType() == null) {
-            try {
-                // Attempt to parse if it was sent as string somehow
-                message.setType(MessageType.TEXT);
-            } catch (Exception e) {
-                message.setType(MessageType.TEXT);
-            }
+            message.setType(MessageType.TEXT);
         }
 
-        // Block check: if receiver has blocked the sender, silently drop the message
+        // Block check
         if (messageService.isBlocked(message.getReceiverId(), message.getSenderId())) {
             log.info("Message from {} to {} dropped — sender is blocked", message.getSenderId(), message.getReceiverId());
             return;
         }
 
-        // Also check reverse: if sender has blocked receiver, don't allow sending
         if (messageService.isBlocked(message.getSenderId(), message.getReceiverId())) {
             log.info("Message from {} to {} dropped — receiver is blocked by sender", message.getSenderId(), message.getReceiverId());
             return;
         }
 
-        Message savedMessage = messageService.sendMessage(message);
-        if (savedMessage == null) {
-            System.err.println("ChatController: sendMessage returned null, not sending");
-            return;
-        }
-        // Send to receiver using their user ID (Principal is now user ID)
-        messagingTemplate.convertAndSendToUser(savedMessage.getReceiverId(), "/queue/messages", savedMessage);
-        // Send confirmation back to sender
-        messagingTemplate.convertAndSendToUser(savedMessage.getSenderId(), "/queue/messages", savedMessage);
+        // Prepare message metadata (timestamp, etc.) via service but DO NOT save to DB here.
+        // The KafkaConsumer will handle persistence to ensure decoupling.
+        Message preparedMessage = messageService.prepareMessage(message);
 
-        // Send push notification to receiver
+        // Push to Kafka for persistence and asynchronous delivery
+        kafkaProducer.sendMessage(preparedMessage);
+
+        // Send push notification to receiver (external to the primary messaging flow)
         try {
-            pushNotificationService.sendMessageNotification(savedMessage);
+            pushNotificationService.sendMessageNotification(preparedMessage);
         } catch (Exception e) {
             log.warn("Failed to send push notification: {}", e.getMessage());
         }
@@ -95,24 +89,28 @@ public class ChatController {
         }
 
         if (receiverId != null && !receiverId.isEmpty()) {
-            messagingTemplate.convertAndSendToUser(receiverId, "/queue/typing", payload);
+            webSocketPublisher.publishTypingStatus(receiverId, payload);
         }
     }
 
     @MessageMapping("/chat.liveLocation")
-    public void liveLocation(@Payload Map<String, Object> payload) {
+    public void liveLocation(@Payload LocationUpdate payload) {
         if (payload == null) {
             return;
         }
         
-        String conversationId = (String) payload.get("conversationId");
-        String userId = (String) payload.get("userId");
-        if (userId == null) userId = (String) payload.get("senderId");
+        String conversationId = payload.getConversationId();
+        String userId = payload.getUserId();
+        if (userId == null) userId = payload.getSenderId();
+        
+        log.debug("Received live location update for conversation {}: {}", conversationId, payload);
         
         if (conversationId != null && userId != null) {
             locationService.updateLiveLocation(conversationId, userId, payload);
-            // Broadcast to the new topic requested
-            messagingTemplate.convertAndSend("/topic/location/" + conversationId, payload);
+            webSocketPublisher.publishLiveLocation(conversationId, payload);
+            log.debug("Broadcasted location update to /topic/location/{}", conversationId);
+        } else {
+            log.warn("Payload missing conversationId or userId: {}", payload);
         }
     }
 }

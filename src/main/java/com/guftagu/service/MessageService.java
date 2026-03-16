@@ -41,7 +41,7 @@ public class MessageService {
                 });
     }
 
-    public Message sendMessage(Message message) {
+    public Message prepareMessage(Message message) {
         // Resolve conversationId if it's missing or a placeholder 'new'
         if (message.getConversationId() == null || message.getConversationId().isEmpty() || "new".equals(message.getConversationId())) {
             Conversation conversation = createConversationIfNotExists(message.getSenderId(), message.getReceiverId());
@@ -56,18 +56,36 @@ public class MessageService {
         if (message.getDeletedFor() == null) {
             message.setDeletedFor(new ArrayList<>());
         }
-
-        Message savedMessage = messageRepository.save(message);
-        updateConversationLastMessage(savedMessage);
-        incrementUnreadCount(savedMessage);
-        return savedMessage;
+        
+        // This method does NOT save to messageRepository.
+        // It only prepares the object for KafkaProducer.
+        return message;
     }
 
+    public Message sendMessage(Message message) {
+        Message savedMessage = messageRepository.save(message);
+
+        updateConversationLastMessage(savedMessage);
+        incrementUnreadCount(savedMessage);
+
+        return savedMessage;
+    }
+        
     public void updateConversationLastMessage(Message message) {
         conversationRepository.findById(message.getConversationId()).ifPresent(conversation -> {
             String lastMsg = message.getContent();
-            if (message.getType() != null && message.getType() != MessageType.TEXT && (lastMsg == null || lastMsg.isEmpty())) {
-                lastMsg = "[" + message.getType().name() + "]";
+            if (message.getType() != null && message.getType() != MessageType.TEXT && (lastMsg == null || lastMsg.isEmpty() || lastMsg.startsWith("["))) {
+                lastMsg = switch (message.getType()) {
+                    case IMAGE -> "📷 Photo";
+                    case VIDEO -> "🎥 Video";
+                    case VOICE, AUDIO -> "🎤 Voice message";
+                    case DOCUMENT, FILE -> "📄 Document";
+                    case LOCATION, LIVE_LOCATION -> "📍 Location";
+                    case CONTACT -> "👤 Contact";
+                    case GIF -> "👾 GIF";
+                    case LINK -> "🔗 Link";
+                    default -> "[" + message.getType().name() + "]";
+                };
             }
             conversation.setLastMessage(lastMsg);
             conversation.setLastMessageTime(LocalDateTime.now());

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import com.guftagu.dto.LocationUpdate;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -15,14 +16,10 @@ public class LocationService {
 
     private final RedisTemplate<String, Object> redisTemplate;
 
-    public void updateLiveLocation(String chatId, String senderId, Map<String, Object> payload) {
+    public void updateLiveLocation(String chatId, String senderId, LocationUpdate payload) {
         String key = "live_location:" + chatId + ":" + senderId;
         
-        Object expiresAtObj = payload.get("expiresAt");
-        long expiresAt = 0;
-        if (expiresAtObj instanceof Number) {
-            expiresAt = ((Number) expiresAtObj).longValue();
-        }
+        long expiresAt = payload.getExpiresAt();
 
         // Store temporary live location
         long ttlSeconds = 60; // Default TTL for the cache (frequent updates)
@@ -35,6 +32,7 @@ public class LocationService {
         
         if (ttlSeconds > 0) {
             redisTemplate.opsForValue().set(key, payload, ttlSeconds, TimeUnit.SECONDS);
+            log.debug("Stored live location in Redis: {} with TTL {}s", key, ttlSeconds);
         }
     }
 }

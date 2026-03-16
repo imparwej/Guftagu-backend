@@ -10,5 +10,7 @@ public enum MessageType {
     CONTACT,
     GIF,
     LINK,
-    VIDEO
+    VIDEO,
+    VOICE,
+    FILE
 }

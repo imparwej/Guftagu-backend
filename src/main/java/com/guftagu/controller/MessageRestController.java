@@ -2,9 +2,9 @@ package com.guftagu.controller;
 
 import com.guftagu.model.Message;
 import com.guftagu.service.MessageService;
+import com.guftagu.websocket.WebSocketMessagePublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +17,7 @@ import java.util.Map;
 public class MessageRestController {
 
     private final MessageService messageService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final WebSocketMessagePublisher webSocketPublisher;
 
     @GetMapping("/{conversationId}")
     public ResponseEntity<List<Message>> getMessageHistory(
@@ -63,8 +63,7 @@ public class MessageRestController {
         Message updated = messageService.reactToMessage(messageId, userId, reaction);
         if (updated != null) {
             // Broadcast to both users
-            messagingTemplate.convertAndSendToUser(updated.getSenderId(), "/queue/messages", updated);
-            messagingTemplate.convertAndSendToUser(updated.getReceiverId(), "/queue/messages", updated);
+            webSocketPublisher.publishMessage(updated);
             return ResponseEntity.ok(updated);
         }
         return ResponseEntity.notFound().build();
@@ -80,8 +79,7 @@ public class MessageRestController {
         Message updated = messageService.editMessage(messageId, newContent);
         if (updated != null) {
             // Broadcast edited message to both users
-            messagingTemplate.convertAndSendToUser(updated.getSenderId(), "/queue/messages", updated);
-            messagingTemplate.convertAndSendToUser(updated.getReceiverId(), "/queue/messages", updated);
+            webSocketPublisher.publishMessage(updated);
             return ResponseEntity.ok(updated);
         }
         return ResponseEntity.badRequest().body(Map.of("error", "Cannot edit message. Time limit exceeded or message not found."));
