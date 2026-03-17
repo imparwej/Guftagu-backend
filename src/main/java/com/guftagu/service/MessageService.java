@@ -74,7 +74,9 @@ public class MessageService {
     public void updateConversationLastMessage(Message message) {
         conversationRepository.findById(message.getConversationId()).ifPresent(conversation -> {
             String lastMsg = message.getContent();
-            if (message.getType() != null && message.getType() != MessageType.TEXT && (lastMsg == null || lastMsg.isEmpty() || lastMsg.startsWith("["))) {
+            if (message.isEncrypted()) {
+                lastMsg = "🔒 Encrypted message";
+            } else if (message.getType() != null && message.getType() != MessageType.TEXT && (lastMsg == null || lastMsg.isEmpty() || lastMsg.startsWith("["))) {
                 lastMsg = switch (message.getType()) {
                     case IMAGE -> "📷 Photo";
                     case VIDEO -> "🎥 Video";

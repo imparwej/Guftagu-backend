@@ -12,15 +12,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class MinioService {
 
     private final MinioClient minioClient;
+
+    public MinioService(MinioClient minioClient) {
+        this.minioClient = minioClient;
+    }
 
     @Value("${server.port:8080}")
     private String serverPort;
@@ -33,6 +37,29 @@ public class MinioService {
 
     @Value("${minio.endpoint}")
     private String minioEndpoint;
+
+    public String uploadBytes(byte[] bytes, String fileName, String contentType) {
+        try {
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(fileName)
+                            .stream(new ByteArrayInputStream(bytes), bytes.length, -1)
+                            .contentType(contentType)
+                            .build()
+            );
+
+            String fullBaseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+            if (fullBaseUrl.equals("http://localhost")) {
+                fullBaseUrl += ":" + serverPort;
+            }
+            return fullBaseUrl + "/api/media/stream/" + fileName;
+
+        } catch (Exception e) {
+            log.error("Error uploading bytes to MinIO", e);
+            throw new RuntimeException("Upload failed", e);
+        }
+    }
 
     public String uploadFile(MultipartFile file, String folder) {
         try {

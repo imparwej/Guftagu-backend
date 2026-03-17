@@ -158,4 +158,32 @@ public class UserService {
                 .map(User::getDeviceToken)
                 .orElse(null);
     }
+
+    /**
+     * Update the RSA public key for a user.
+     */
+    public void updatePublicKey(String userId, String publicKey) {
+        userRepository.findById(userId).ifPresentOrElse(user -> {
+            user.setPublicKey(publicKey);
+            userRepository.save(user);
+            System.out.println("[UserService] Successfully saved public key for user: " + userId);
+        }, () -> {
+            System.err.println("[UserService] Failed to update public key. User not found: " + userId);
+        });
+    }
+
+    /**
+     * Get the RSA public key for a user.
+     */
+    public String getPublicKey(String userId) {
+        return userRepository.findById(userId)
+                .map(user -> {
+                    String pk = user.getPublicKey();
+                    if (pk == null || pk.isEmpty()) {
+                        System.out.println("[UserService] Public key not set for user: " + userId);
+                    }
+                    return pk;
+                })
+                .orElse(null);
+    }
 }

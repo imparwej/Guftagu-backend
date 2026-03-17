@@ -47,4 +47,7 @@ public class User {
 
     // Firebase device token for push notifications
     private String deviceToken;
+
+    // End-to-End Encryption: User's RSA public key (base64 encoded)
+    private String publicKey;
 }

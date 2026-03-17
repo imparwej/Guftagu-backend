@@ -35,12 +35,19 @@ public class Message {
     private String content;
     private MessageType type;
     private String mediaUrl;
+    private String thumbnailUrl;
     private long timestamp;
     private boolean delivered;
     private boolean seen;
     private String fileName;
     private Long fileSize;
     private Double voiceDuration;
+    
+    // End-to-End Encryption fields
+    private String encryptedMessage;
+    private String encryptedAESKey;
+    @Builder.Default
+    private boolean isEncrypted = false;
 
     // Additional fields for extended features
     @Builder.Default

@@ -75,4 +75,38 @@ public class UserController {
         userService.updateDeviceToken(userId, token);
         return ResponseEntity.ok(Map.of("success", true));
     }
+
+    /**
+     * Store or update the user's RSA public key for E2EE.
+     */
+    @PostMapping("/public-key")
+    public ResponseEntity<?> updatePublicKey(@RequestBody Map<String, String> request) {
+        String userId = request.get("userId");
+        String publicKey = request.get("publicKey");
+        System.out.println("[UserController] Updating public key for user: " + userId);
+        userService.updatePublicKey(userId, publicKey);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    /**
+     * Fetch the RSA public key of a specific user.
+     */
+    @GetMapping("/{id}/public-key")
+    public ResponseEntity<?> getPublicKey(@PathVariable String id) {
+        System.out.println("[UserController] Fetching public key for user: " + id);
+        // First check if user exists
+        try {
+            userService.getUserById(id);
+        } catch (Exception e) {
+            System.out.println("[UserController] User not found: " + id);
+            return ResponseEntity.notFound().build();
+        }
+
+        String publicKey = userService.getPublicKey(id);
+        if (publicKey == null) {
+            System.out.println("[UserController] Public key is NULL for user: " + id + ". Returning empty string.");
+            return ResponseEntity.ok(Map.of("publicKey", ""));
+        }
+        return ResponseEntity.ok(Map.of("publicKey", publicKey));
+    }
 }
